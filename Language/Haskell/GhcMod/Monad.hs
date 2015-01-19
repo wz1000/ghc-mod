@@ -30,6 +30,9 @@ module Language.Haskell.GhcMod.Monad (
   , withOptions
   , withTempSession
   , overrideGhcUserOptions
+  , cleanupGhcModEnv
+  , initializeFlagsWithCradle
+  , cleanupCradle
   -- ** Re-exporting convenient stuff
   , liftIO
   , module Control.Monad.Reader.Class

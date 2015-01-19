@@ -79,7 +79,9 @@ getSrcSpanTypeForFnSplit modSum lineNo colNo = do
         varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
         case varT of
           Just varT' ->
-            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
+#if __GLASGOW_HASKELL__ > 708
+            let (L matchL (G.Match _ _ _ (G.GRHSs rhsLs _))) = match
+#endif
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 

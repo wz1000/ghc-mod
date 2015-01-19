@@ -133,7 +133,11 @@ getSignature modSum lineNo colNo = do
                         G.TypeFamily -> Open
                         G.DataFamily -> Data
 #endif
-#if __GLASGOW_HASKELL__ >= 706
+#if __GLASGOW_HASKELL__ >= 708
+            getTyFamVarName x = case x of
+                L _ (G.UserTyVar n)     -> n
+                L _ (G.KindedTyVar (L _ n) _) -> n
+#elif __GLASGOW_HASKELL__ >= 706
             getTyFamVarName x = case x of
                 L _ (G.UserTyVar n)     -> n
                 L _ (G.KindedTyVar n _) -> n
@@ -463,7 +467,9 @@ getPatsForVariable tcs (lineNo, colNo) =
 #else
                     :: [G.LMatch Id]
 #endif
-              (L _ (G.Match pats _ _):_) = m
+#if __GLASGOW_HASKELL__ >= 708
+              (L _ (G.Match _ pats _ _):_) = m
+#endif
            in (funId, pats)
         _ -> (error "This should never happen", [])
 

@@ -41,6 +41,9 @@ module Language.Haskell.GhcMod.Internal (
   , getCompilerMode
   , setCompilerMode
   , withOptions
+  , cleanupGhcModEnv
+  , initializeFlagsWithCradle
+  , cleanupCradle
   -- * 'GhcModError'
   , gmeDoc
   -- * 'GhcMonad' Choice
