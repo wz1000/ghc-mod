@@ -129,7 +129,7 @@ Library
                       , text
                       , djinn-ghc >= 0.0.2.2
   if impl(ghc >= 7.10)
-    Build-Depends:      Cabal >= 1.18
+    Build-Depends:      Cabal == 1.22
 
   if impl(ghc == 7.8.*)
     Build-Depends:      Cabal >= 1.18 && < 1.22
@@ -242,6 +242,9 @@ Test-Suite spec
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
+
+  if impl(ghc >= 7.10)
+    Build-Depends:      Cabal == 1.22
 
   if impl(ghc == 7.8.*)
     Build-Depends:      Cabal >= 1.18 && < 1.22
