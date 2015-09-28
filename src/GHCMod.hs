@@ -29,7 +29,10 @@ import System.Environment (getArgs)
 import System.IO
 import System.Exit
 import Text.PrettyPrint
+import Text.Printf
 import Prelude hiding ((.))
+import System.CPUTime
+import Data.Time.Clock
 
 import Misc
 
@@ -402,8 +405,29 @@ main = do
               runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
           ]
 
+-- From http://rosettacode.org/wiki/Time_a_function#Haskell
+-- We assume the function we are timing is an IO monad computation
+timeIt :: (Fractional c) => (a -> IO ()) -> a -> IO c
+timeIt action arg =
+  do startTime <- getCPUTime
+     action arg
+     finishTime <- getCPUTime
+     return $ fromIntegral (finishTime - startTime) / 1000000000000
+-- timeIt' (\x -> foldl' (+) x [1..1000000]) 4 >>= printf "Sum(4) takes %f seconds.\n"
+
 progMain :: (Options,[String]) -> IO ()
-progMain (globalOptions,cmdArgs) = runGmOutT globalOptions $
+progMain (opts,args) = do
+  t <- timeIt progMain' (opts,args) :: IO Double
+  appendLog $ printf ("Command:[" ++ (intercalate "," args) ++ "] takes %f seconds") t
+
+appendLog :: String -> IO ()
+appendLog str = do
+    now <- getCurrentTime
+    let str' = (show now) ++ ":" ++ str ++ "\n"
+    appendFile "/tmp/ghc-mod.log" str'
+
+progMain' :: (Options,[String]) -> IO ()
+progMain' (globalOptions,cmdArgs) = runGmOutT globalOptions $
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
       Nothing -> wrapGhcCommands globalOptions cmdArgs
@@ -417,6 +441,7 @@ globalCommands _       = Nothing
 -- ghc-modi
 legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
+    liftIO $ appendLog "legacyInteractive entered"
     opt <- options
     prepareCabalHelper
     tmpdir <- cradleTempDir <$> cradle
@@ -442,10 +467,12 @@ replace needle replacement = intercalate replacement . splitOn needle
 legacyInteractiveLoop :: IOish m
                       => SymDbReq -> World -> GhcModT m ()
 legacyInteractiveLoop symdbreq world = do
+    liftIO $ appendLog "legacyInteractiveLoop top"
     liftIO . setCurrentDirectory =<< cradleRootDir <$> cradle
 
     -- blocking
     cmdArg <- liftIO $ getLine
+    liftIO $ appendLog $ "legacyInteractiveLoop got cmd:[" ++ cmdArg ++ "]"
 
     -- after blocking, we need to see if the world has changed.
 
@@ -456,6 +483,7 @@ legacyInteractiveLoop symdbreq world = do
                 else return world
 
     when changed $ do
+        liftIO $ appendLog "legacyInteractiveLoop dropping session"
         dropSession
 
     let (cmd':args') = split (keepDelimsR $ condense $ whenElt isSpace) cmdArg

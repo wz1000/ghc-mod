@@ -200,6 +200,8 @@ Executable ghc-mod
                       , ghc
                       , ghc-mod
                       , fclabels == 2.0.*
+                      , time
+                      , old-time
 
 Executable ghc-modi
   Default-Language:     Haskell2010
