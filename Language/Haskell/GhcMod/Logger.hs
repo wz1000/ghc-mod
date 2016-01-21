@@ -25,7 +25,7 @@ import qualified GHC as G
 import Bag
 
 import Language.Haskell.GhcMod.Convert
-import Language.Haskell.GhcMod.Doc (showPage)
+-- import Language.Haskell.GhcMod.Doc (showPage)
 import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
@@ -135,7 +135,7 @@ ppErrMsg err = do
     dflags <- asks gpeDynFlags
     let unqual = errMsgContext err
         st = Gap.mkErrStyle' dflags unqual
-    let ext = showPage dflags st (errMsgExtraInfo err)
+    let ext = Gap.showPage dflags st (errMsgExtraInfo err)
     m <- ppMsg st spn SevError msg
     return $ m ++ (if null ext then "" else "\n" ++ ext)
    where
@@ -145,7 +145,7 @@ ppErrMsg err = do
 ppMsg :: PprStyle -> SrcSpan -> Severity -> SDoc -> GmPprEnvM String
 ppMsg st spn sev msg = do
   dflags <- asks gpeDynFlags
-  let cts  = showPage dflags st msg
+  let cts  = Gap.showPage dflags st msg
   prefix <- ppMsgPrefix spn sev cts
   return $ prefix ++ cts
 

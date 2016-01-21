@@ -28,7 +28,11 @@ module Language.Haskell.GhcMod.Gap (
   , nameForUser
   , occNameForUser
   , deSugar
+#if __GLASGOW_HASKELL__ <= 708
   , showDocWith
+#endif
+  , showPage
+  , showOneLine
   , GapThing(..)
   , fromTyThing
   , fileModSummary
@@ -161,7 +165,9 @@ showPage :: DynFlags -> PprStyle -> SDoc -> String
 showPage dflag style = flip (renderWithStyle dflag) style
 
 showOneLine :: DynFlags -> PprStyle -> SDoc -> String
-showOneLine dflag style = showSDocOneLine . withStyle dflag style
+-- showOneLine dflag style = showSDocOneLine . withStyle dflag style
+showOneLine dflag style = showSDocOneLine dflag
+
 #else
 
 showPage :: DynFlags -> PprStyle -> SDoc -> String
@@ -185,6 +191,44 @@ showDocWith _ = Pretty.showDocWith
 
 #endif
 
+----------------------------------------------------------------
+{-
+--  Pre-GHC 8.0 ErrMsg
+data ErrMsg = ErrMsg {
+        errMsgSpan      :: SrcSpan,
+        errMsgContext   :: PrintUnqualified,
+        errMsgShortDoc  :: MsgDoc,   -- errMsgShort* should always
+        errMsgShortString :: String, -- contain the same text
+        errMsgExtraInfo :: MsgDoc,
+        errMsgSeverity  :: Severity
+        }
+        -- The SrcSpan is used for sorting errors into line-number order
+
+Post GHC 8.0 ErrMsg
+
+data ErrMsg = ErrMsg {
+        errMsgSpan        :: SrcSpan,
+        errMsgContext     :: PrintUnqualified,
+        errMsgDoc         :: ErrDoc,
+        -- | This has the same text as errDocImportant . errMsgDoc.
+        errMsgShortString :: String,
+        errMsgSeverity    :: Severity
+        }
+        -- The SrcSpan is used for sorting errors into line-number order
+
+-- | Categorise error msgs by their importance.  This is so each section can
+-- be rendered visually distinct.  See Note [Error report] for where these come
+-- from.
+data ErrDoc = ErrDoc {
+        -- | Primary error msg.
+        errDocImportant :: [MsgDoc],
+        -- | Context e.g. \"In the second argument of ...\".
+        _errDocContext :: [MsgDoc],
+        -- | Supplementary information, e.g. \"Relevant bindings include ...\".
+        _errDocSupplementary :: [MsgDoc]
+        }
+
+-}
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
@@ -220,7 +264,11 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 ----------------------------------------------------------------
 
 fOptions :: [String]
-#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 800
+fOptions = [option | (FlagSpec option _ _ _) <- fFlags]
+        ++ [option | (FlagSpec option _ _ _) <- wWarningFlags]
+        ++ [option | (FlagSpec option _ _ _) <- fLangFlags]
+#elif __GLASGOW_HASKELL__ >= 710
 fOptions = [option | (FlagSpec option _ _ _) <- fFlags]
         ++ [option | (FlagSpec option _ _ _) <- fWarningFlags]
         ++ [option | (FlagSpec option _ _ _) <- fLangFlags]
@@ -488,7 +536,12 @@ type GLMatchI = LMatch Id
 #endif
 
 getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
-#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 800
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (HsIB _ (L _ (HsForAllTy _ (L _ (HsAppTy (L _ (HsTyVar (L _ className))) _)))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (HsIB _ (L _ (HsAppTy (L _ (HsTyVar (L _ className))) _) ) )}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 710
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
 -- Instance declarations of sort 'instance F G' (no variables)

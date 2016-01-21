@@ -124,6 +124,7 @@ instance MonadTrans GmlT where
 
 -- GmT ------------------------------------------
 
+-- instance MonadReader r m => MonadReader r (GmT m) where
 instance forall r m. MonadReader r m => MonadReader r (GmT m) where
     local f ma = gmLiftWithInner (\run -> local f (run ma))
     ask = gmLiftInner ask
