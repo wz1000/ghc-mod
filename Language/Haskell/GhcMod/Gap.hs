@@ -75,7 +75,10 @@ import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
 
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 800
+import FamInstEnv
+import ConLike (ConLike(..))
+#elif __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
 import ConLike (ConLike(..))
 import PatSyn (patSynType)
@@ -440,7 +443,10 @@ data GapThing = GtA Type | GtT TyCon | GtN
 
 fromTyThing :: TyThing -> GapThing
 fromTyThing (AnId i)                   = GtA $ varType i
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 800
+fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
+fromTyThing (AConLike (PatSynCon p))   = GtA $ error "fromTyThing PatSynCon"
+#elif __GLASGOW_HASKELL__ >= 708
 fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
 fromTyThing (AConLike (PatSynCon p))   = GtA $ patSynType p
 #else
