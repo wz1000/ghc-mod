@@ -156,7 +156,6 @@ runGhcInHsc action = do
 hscFrontend :: (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
 hscFrontend keepInfoFunc saveModule mod_summary = do
     mfn <- canonicalizeModSummary mod_summary
-    let
       -- md = GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod mod_summary
     keepInfo <- case mfn of
       Just fileName -> liftIO $ keepInfoFunc fileName
