@@ -97,25 +97,25 @@ tweakModSummaryDynFlags ms =
 -- Appends the parent directories of all the mapped files
 -- to the includePaths for CPP purposes.
 -- Use in combination with `runActionInContext` for best results
-getTypecheckedModuleGhc' :: GM.IOish m
+getTypecheckedModuleGhc :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> GM.GhcModT m (a, Maybe TypecheckedModule)
-getTypecheckedModuleGhc' wrapper targetFile = do
+getTypecheckedModuleGhc wrapper targetFile = do
   cfileName <- liftIO $ canonicalizePath targetFile
   mfs <- GM.getMMappedFiles
   mFileName <- liftIO . canonicalizePath $ getMappedFileName cfileName mfs
   ref <- liftIO $ newIORef Nothing
   let keepInfo = pure . (mFileName ==)
       saveModule = writeIORef ref . Just
-  res <- getTypecheckedModuleGhc wrapper targetFile keepInfo saveModule
+  res <- getTypecheckedModuleGhc' wrapper targetFile keepInfo saveModule
   mtm <- liftIO $ readIORef ref
   return (res, mtm)
 
--- | like getTypecheckedModuleGhc' but allows you to keep an arbitary number of Modules
+-- | like getTypecheckedModuleGhc but allows you to keep an arbitary number of Modules
 -- `keepInfo` decides which TypecheckedModule to keep
 -- `saveModule` is the callback that is passed the TypecheckedModule
-getTypecheckedModuleGhc :: GM.IOish m
+getTypecheckedModuleGhc' :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GM.GhcModT m a
-getTypecheckedModuleGhc wrapper targetFile keepInfo saveModule = do
+getTypecheckedModuleGhc' wrapper targetFile keepInfo saveModule = do
   cfileName <- liftIO $ canonicalizePath targetFile
   mfs <- GM.getMMappedFiles
   let ips = map takeDirectory $ Map.keys mfs
@@ -127,8 +127,7 @@ getTypecheckedModuleGhc wrapper targetFile keepInfo saveModule = do
                         (Just $ updateHooks keepInfo saveModule)
                         wrapper
                         (return ())
-  res <- setTarget cfileName
-  return res
+  setTarget cfileName
 
 updateHooks
   :: (FilePath -> IO Bool)
