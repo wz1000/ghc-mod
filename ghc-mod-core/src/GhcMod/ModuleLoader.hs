@@ -17,7 +17,6 @@ module GhcMod.ModuleLoader
   , emptyModuleCache
   , ModuleCache(..)
   -- * foo
-  , ExtensionClass(..)
   , cachedModules
   , getCachedModule
   , withCachedModule
@@ -30,8 +29,9 @@ module GhcMod.ModuleLoader
   , getNamesAtPos
   , unpackRealSrcSpan
   , toPos
-  -- * Usage
+  -- * Extensible state Usage
   -- $usage
+  , ExtensionClass(..)
   , put
   , modify
   , remove
@@ -41,6 +41,7 @@ module GhcMod.ModuleLoader
   ) where
 
 import           Control.Monad.State.Strict hiding (put,get,modify,gets)
+import           Data.Char
 import qualified Data.Generics                     as SYB
 import           Data.Dynamic
 import qualified Data.IntervalMap.FingerTree       as IM
@@ -210,11 +211,21 @@ instance Show CachedModule where
 
 uriToFilePath :: FileUri -> Maybe FilePath
 uriToFilePath (FileUri uri)
-  | "file://" `T.isPrefixOf` uri = Just $ T.unpack $ T.drop n uri
+  | "file://" `T.isPrefixOf` uri = Just $ platformAdjust . uriDecode . T.unpack $ T.drop n uri
   | otherwise = Nothing
-      where n = T.length "file://"
+      where
+        n = T.length "file://"
+
+        uriDecode ('%':x:y:rest) = toEnum (16 * digitToInt x + digitToInt y) : uriDecode rest
+        uriDecode (x:xs) = x : uriDecode xs
+        uriDecode [] = []
+
+        -- Drop leading '/' for absolute Windows paths
+        platformAdjust path@('/':_drive:':':_rest) = tail path
+        platformAdjust path = path
 
 filePathToUri :: FilePath -> FileUri
+filePathToUri file@(_drive:':':_rest) = FileUri $ T.pack $ "file:///" ++ file
 filePathToUri file = FileUri $ T.pack $ "file://" ++ file
 
 canonicalizeUri :: MonadIO m => FileUri -> m FileUri
