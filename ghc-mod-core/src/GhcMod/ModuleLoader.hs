@@ -101,7 +101,7 @@ getTypecheckedModuleGhc wrapper targetFile = do
   ref <- liftIO $ newIORef Nothing
   let keepInfo = pure . (mFileName ==)
       saveModule = writeIORef ref . Just
-  res <- getTypecheckedModuleGhc' wrapper targetFile keepInfo saveModule
+  res <- getTypecheckedModuleGhc' wrapper [cfileName] keepInfo saveModule
   mtm <- liftIO $ readIORef ref
   return (res, mtm)
 
@@ -109,20 +109,16 @@ getTypecheckedModuleGhc wrapper targetFile = do
 -- `keepInfo` decides which TypecheckedModule to keep
 -- `saveModule` is the callback that is passed the TypecheckedModule
 getTypecheckedModuleGhc' :: GM.IOish m
-  => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GM.GhcModT m a
-getTypecheckedModuleGhc' wrapper targetFile keepInfo saveModule = do
-  cfileName <- liftIO $ canonicalizePath targetFile
+  => (GM.GmlT m () -> GM.GmlT m a) -> [FilePath] -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GM.GhcModT m a
+getTypecheckedModuleGhc' wrapper targetFiles keepInfo saveModule = do
   mfs <- GM.getMMappedFiles
   let ips = map takeDirectory $ Map.keys mfs
       setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
-  let
-    setTarget fileName
-      = GM.runGmlTWith' [Left fileName]
-                        (return . setIncludePaths)
-                        (Just $ updateHooks keepInfo saveModule)
-                        wrapper
-                        (return ())
-  setTarget cfileName
+  GM.runGmlTWith' (map Left targetFiles)
+                  (return . setIncludePaths)
+                  (Just $ updateHooks keepInfo saveModule)
+                  wrapper
+                  (return ())
 
 updateHooks
   :: (FilePath -> IO Bool)
