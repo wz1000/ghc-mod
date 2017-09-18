@@ -26,7 +26,7 @@ module GhcMod.ModuleLoader
   , runActionWithContext
   , genLocMap
   , genTypeMap
-  , getNamesAtPos
+  , getArtifactsAtPos
   , unpackRealSrcSpan
   , toPos
   -- * Extensible state Usage
@@ -390,8 +390,8 @@ genLocMap tm = names
 
 -- | Seaches for all the symbols at a point in the
 -- given LocMap
-getNamesAtPos :: Pos -> LocMap -> [((Pos,Pos), GHC.Name)]
-getNamesAtPos p im = map f $ IM.search p im
+getArtifactsAtPos :: Pos -> SourceMap a -> [((Pos,Pos), a)]
+getArtifactsAtPos p im = map f $ IM.search p im
   where f (IM.Interval a b, x) = ((a, b), x)
 
 -- ---------------------------------------------------------------------
