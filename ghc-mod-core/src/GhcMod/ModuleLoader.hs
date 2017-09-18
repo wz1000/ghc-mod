@@ -25,6 +25,7 @@ module GhcMod.ModuleLoader
   , getCradle
   , runActionWithContext
   , genLocMap
+  , genTypeMap
   , getNamesAtPos
   , unpackRealSrcSpan
   , toPos
@@ -67,6 +68,8 @@ import Control.Monad.Trans.Control
 import Exception (ExceptionMonad )
 
 import           Data.IORef
+
+import GhcMod.SrcUtils
 
 -- ---------------------------------------------------------------------
 
@@ -180,11 +183,14 @@ data UriCache = UriCache
 data Pos = Pos { line :: Int, col :: Int}
   deriving (Eq,Show,Read,Ord)
 
-type LocMap = IM.IntervalMap Pos GHC.Name
+type SourceMap a = IM.IntervalMap Pos a
+type LocMap = SourceMap GHC.Name
+type TypeMap = SourceMap GHC.Type
 
 data CachedModule = CachedModule
   { tcMod          :: !TypecheckedModule
   , locMap         :: !LocMap
+  , typeMap        :: !TypeMap
   , revMap         :: !(FilePath -> FilePath)
   , newPosToOldPos :: !(Pos -> Maybe Pos)
   , oldPosToNewPos :: !(Pos -> Maybe Pos)
@@ -330,6 +336,15 @@ deleteCachedModule uri = do
   modifyCache (\s -> s { uriCaches = Map.delete uri' (uriCaches s) })
 
 -- ---------------------------------------------------------------------
+
+genTypeMap :: GHC.GhcMonad m => TypecheckedModule -> m TypeMap
+genTypeMap tm = do
+    ts <- collectAllSpansTypes True tm
+    return $ foldr go IM.empty ts
+  where
+    go (GHC.RealSrcSpan spn, typ) im =
+      IM.insert (uncurry IM.Interval $ unpackRealSrcSpan spn) typ im
+    go _ im = im
 
 -- | Generates a LocMap from a TypecheckedModule,
 -- which allows fast queries for all the symbols
