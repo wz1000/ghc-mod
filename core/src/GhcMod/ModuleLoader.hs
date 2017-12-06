@@ -439,7 +439,7 @@ class Typeable a => ExtensionClass a where
 -- TODO: this name is confusing, given GhcModuleCache. Change it
 class Typeable a => ModuleCache a where
     -- | Defines an initial value for the state extension
-    cacheDataProducer :: (Monad m) => CachedModule -> m a
+    cacheDataProducer :: (MonadIO m) => CachedModule -> m a
 
 instance ModuleCache () where
     cacheDataProducer = const $ return ()
