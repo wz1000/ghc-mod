@@ -32,15 +32,6 @@ module GhcMod.ModuleLoader
   , getArtifactsAtPos
   , unpackRealSrcSpan
   , toPos
-  -- * Extensible state Usage
-  -- $usage
-  , ExtensionClass(..)
-  , put
-  , modify
-  , remove
-  , get
-  , gets
-
   ) where
 
 import           Control.Monad.State.Strict hiding (put,get,modify,gets)
@@ -220,12 +211,10 @@ class (Monad m) => HasGhcModuleCache m where
   setModuleCache :: GhcModuleCache -> m ()
 
 emptyModuleCache :: GhcModuleCache
-emptyModuleCache = GhcModuleCache Map.empty Map.empty Map.empty
+emptyModuleCache = GhcModuleCache Map.empty Map.empty
 
 data GhcModuleCache = GhcModuleCache
-  { extensibleState :: !(Map.Map TypeRep Dynamic)
-              -- ^ stores custom state information.
-  , cradleCache :: !(Map.Map FilePath GM.Cradle)
+  { cradleCache :: !(Map.Map FilePath GM.Cradle)
               -- ^ map from dirs to cradles
   , uriCaches  :: !UriCaches
   } deriving (Show)
@@ -417,20 +406,7 @@ unpackRealSrcSpan rspan =
 toPos :: (Int,Int) -> Pos
 toPos (l,c) = Pos (l-1) (c-1)
 
-
 -- ---------------------------------------------------------------------
--- Extensible state, based on
--- http://xmonad.org/xmonad-docs/xmonad/XMonad-Core.html#t:ExtensionClass
---
-
--- | Every module must make the data it wants to store
--- an instance of this class.
---
--- Minimal complete definition: initialValue
-class Typeable a => ExtensionClass a where
-    -- | Defines an initial value for the state extension
-    initialValue :: a
-
 -- | A ModuleCache is valid for the lifetime of a CachedModule
 -- It is generated on need and the cache is invalidated
 -- when a new CachedModule is loaded.
@@ -444,94 +420,3 @@ class Typeable a => ModuleCache a where
 instance ModuleCache () where
     cacheDataProducer = const $ return ()
 
--- ---------------------------------------------------------------------
-
--- Based on the one in xmonad-contrib, original header below
------------------------------------------------------------------------------
--- |
--- Module      :  XMonad.Util.ExtensibleState
--- Copyright   :  (c) Daniel Schoepe 2009
--- License     :  BSD3-style (see LICENSE)
---
--- Maintainer  :  daniel.schoepe@gmail.com
--- Stability   :  unstable
--- Portability :  not portable
---
--- Module for storing custom mutable state in xmonad.
---
------------------------------------------------------------------------------
-
-
--- ---------------------------------------------------------------------
--- $usage
---
--- To utilize this feature in a plugin, create a data type
--- and make it an instance of ExtensionClass. You can then use
--- the functions from this module for storing and retrieving your data:
---
--- > {-# LANGUAGE DeriveDataTypeable #-}
--- > import qualified Haskell.Ide.Engine.ExtensibleState as XS
--- >
--- > data ListStorage = ListStorage [Integer] deriving Typeable
--- > instance ExtensionClass ListStorage where
--- >   initialValue = ListStorage []
--- >
--- > .. XS.put (ListStorage [23,42])
---
--- To retrieve the stored value call:
---
--- > .. XS.get
---
--- If the type can't be inferred from the usage of the retrieved data, you
--- have to add an explicit type signature:
---
--- > .. XS.get :: X ListStorage
---
--- > data ListStorage = ListStorage [Integer] deriving (Typeable,Read,Show)
--- >
--- > instance ExtensionClass ListStorage where
--- >   initialValue = ListStorage []
---
--- A module should not try to store common datatypes(e.g. a list of Integers)
--- without a custom data type as a wrapper to avoid collisions with other modules
--- trying to store the same data type without a wrapper.
---
-
--- | Modify the map of state extensions by applying the given function.
-modifyStateExts :: (Monad m, HasGhcModuleCache m)
-                => (Map.Map TypeRep Dynamic
-                     -> Map.Map TypeRep Dynamic)
-                -> m ()
--- modifyStateExts f = lift $ lift $ State.modify $ \st -> st { extensibleState = f (extensibleState st) }
-modifyStateExts f = do
-  mc <- getModuleCache
-  setModuleCache (mc { extensibleState = f (extensibleState mc) })
-
--- | Apply a function to a stored value of the matching type or the initial value if there
--- is none.
-modify :: (ExtensionClass a, Monad m, HasGhcModuleCache m) => (a -> a) -> m ()
-modify f = put . f =<< get
-
--- | Add a value to the extensible state field. A previously stored value with the same
--- type will be overwritten. (More precisely: A value whose string representation of its type
--- is equal to the new one's)
-put :: (ExtensionClass a, HasGhcModuleCache m) => a -> m ()
-put v = modifyStateExts . Map.insert (typeOf $ v) . toDyn $ v
-
--- | Try to retrieve a value of the requested type, return an initial value if there is no such value.
-get :: forall a m. (ExtensionClass a, HasGhcModuleCache m) => m a
-get = do
-  mc <- getModuleCache
-  let v = (Map.lookup (typeRep $ (Proxy :: Proxy a)) . extensibleState) mc
-  case v of
-    Just dyn -> return $ fromDyn dyn initialValue
-    _        -> return initialValue
-
-gets :: (ExtensionClass a, HasGhcModuleCache m) => (a -> b) -> m b
-gets = flip fmap get
-
--- | Remove the value from the extensible state field that has the same type as the supplied argument
-remove :: (ExtensionClass a, HasGhcModuleCache m) => proxy a -> m ()
-remove wit = modifyStateExts $ Map.delete (typeRep $ wit)
-
--- ---------------------------------------------------------------------
