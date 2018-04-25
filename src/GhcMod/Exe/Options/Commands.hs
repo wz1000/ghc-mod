@@ -13,12 +13,15 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module GhcMod.Exe.Options.Commands where
 
--- import Data.Semigroup
+#if __GLASGOW_HASKELL__ < 804
+import Data.Semigroup
+#endif
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
