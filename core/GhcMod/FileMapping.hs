@@ -60,8 +60,9 @@ loadMappedFile' from to isTemp = do
   cfn <- liftIO $ canonicalizePath from
   unloadMappedFile' cfn
   crdl <- cradle
-  let to' = makeRelative (cradleRootDir crdl) to
-  addMMappedFile cfn (FileMapping to' isTemp)
+  to' <- liftIO $ canonicalizePath to
+  let to'' = makeRelative (cradleRootDir crdl) to'
+  addMMappedFile cfn (FileMapping to'' isTemp)
 
 mapFile :: (IOish m, GmState m) => HscEnv -> Target -> m Target
 mapFile _ (Target tid@(TargetFile filePath _) taoc _) = do
