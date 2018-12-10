@@ -21,6 +21,7 @@ module GhcMod.Utils (
     module GhcMod.Utils
   , module Utils
   , readProcess
+  , readUtf8File
   ) where
 
 import Control.Applicative
@@ -36,6 +37,7 @@ import GhcMod.Monad.Types
 import System.Directory
 import System.Environment
 import System.FilePath
+import System.IO (openFile, hSetEncoding, utf8, hGetContents, IOMode (ReadMode))
 import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
@@ -163,3 +165,10 @@ makeAbsolute' = (normalise <$>) . absolutize
   where absolutize path -- avoid the call to `getCurrentDirectory` if we can
           | isRelative path = (</> path) <$> getCurrentDirectory
           | otherwise       = return path
+
+
+readUtf8File :: FilePath -> IO String
+readUtf8File path = do
+  hd <- openFile path ReadMode
+  hSetEncoding hd utf8
+  hGetContents hd

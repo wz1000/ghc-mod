@@ -62,7 +62,7 @@ import GhcMod.Logging
 import GhcMod.Logger
 import GhcMod.Monad.Types
 import GhcMod.Types
-import GhcMod.Utils (withMappedFile)
+import GhcMod.Utils (withMappedFile, readUtf8File)
 import GhcMod.Gap (parseModuleHeader)
 
 -- | Turn module graph into a graphviz dot file
@@ -212,7 +212,7 @@ updateHomeModuleGraph' env smp0 = do
    step :: ModulePath -> m (Maybe (Set ModulePath))
    step mp = runMaybeT $ do
        (dflags, ppsrc_fn) <- MaybeT preprocess'
-       src <- liftIO $ readFile ppsrc_fn
+       src <- liftIO $ readUtf8File ppsrc_fn
        imports mp src dflags
     where
       preprocess' :: m (Maybe (DynFlags, FilePath))
@@ -261,7 +261,7 @@ fileModuleName env fn = do
       Left errs -> do
         return $ Left errs
       Right (_warns, (dflags, procdFile)) -> leftM (errBagToStrList env) =<< handler (do
-        src <- readFile procdFile
+        src <- readUtf8File procdFile
         case parseModuleHeader src dflags procdFile of
           Left errs -> return $ Left errs
           Right (_, lmdl) -> do
